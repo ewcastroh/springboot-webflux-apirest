@@ -5,7 +5,10 @@ import com.ewch.springboot.webflux.apirest.service.ProductService;
 import java.io.File;
 import java.net.URI;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
+import javax.validation.Valid;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -20,6 +23,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.support.WebExchangeBindException;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -59,16 +63,37 @@ public class ProductController {
 	}
 
 	@PostMapping
-	public Mono<ResponseEntity<Product>> createProduct(@RequestBody Product product) {
-		if (product.getCreatedAt() == null) {
-			product.setCreatedAt(new Date());
-		}
-		return productService.save(product)
-			.map(product1 ->
-				ResponseEntity.created(URI.create("/api/products/".concat(product.getId())))
-				.contentType(MediaType.APPLICATION_JSON_UTF8)
-				.body(product)
-			);
+	public Mono<ResponseEntity<Map<String, Object>>> createProduct(@Valid @RequestBody Mono<Product> productMono) {
+
+		Map<String, Object> response = new HashMap<>();
+
+		return productMono.flatMap(product -> {
+			if (product.getCreatedAt() == null) {
+				product.setCreatedAt(new Date());
+			}
+			return productService.save(product)
+				.map(product1 -> {
+					response.put("product", product1);
+					response.put("message", "Product created successfully!");
+					response.put("timestamp", new Date());
+					return ResponseEntity.created(URI.create("/api/products/".concat(product.getId())))
+						.contentType(MediaType.APPLICATION_JSON_UTF8)
+						.body(response);
+					});
+		}).onErrorResume(throwable -> {
+			return Mono.just(throwable).cast(WebExchangeBindException.class)
+				.flatMap(e -> Mono.just(e.getFieldErrors()))
+				.flatMapMany(Flux::fromIterable)
+				.map(fieldError -> "Field ".concat(fieldError.getField()).concat(" ").concat(fieldError.getDefaultMessage()))
+				.collectList()
+				.flatMap(strings -> {
+					response.put("errors", strings);
+					response.put("timestamp", new Date());
+					response.put("status", HttpStatus.BAD_REQUEST.value());
+					return Mono.just(ResponseEntity.badRequest().body(response));
+				});
+		});
+
 	}
 
 	@PostMapping("/v2")
