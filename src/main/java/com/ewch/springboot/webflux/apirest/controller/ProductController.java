@@ -71,6 +71,28 @@ public class ProductController {
 			);
 	}
 
+	@PostMapping("/v2")
+	public Mono<ResponseEntity<Product>> createProductWithPicture(Product product, @RequestPart FilePart filePart) {
+		if (product.getCreatedAt() == null) {
+			product.setCreatedAt(new Date());
+		}
+
+		product.setPicture(UUID.randomUUID().toString()
+			.concat("-")
+			.concat(filePart.filename())
+			.replace(" ", "")
+			.replace(":", "")
+			.replace("\\", ""));
+
+		return filePart.transferTo(new File(pathUploads.concat(product.getPicture())))
+			.then(productService.save(product))
+			.map(product1 ->
+				ResponseEntity.created(URI.create("/api/products/".concat(product.getId())))
+				.contentType(MediaType.APPLICATION_JSON_UTF8)
+				.body(product)
+			);
+	}
+
 	@PutMapping("/{id}")
 	public Mono<ResponseEntity<Product>> updateProduct(@RequestBody Product product, @PathVariable("id") String id) {
 		return productService.findById(id)
