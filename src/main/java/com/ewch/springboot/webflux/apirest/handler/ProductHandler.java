@@ -2,9 +2,13 @@ package com.ewch.springboot.webflux.apirest.handler;
 
 import com.ewch.springboot.webflux.apirest.model.document.Product;
 import com.ewch.springboot.webflux.apirest.service.ProductService;
+import java.io.File;
 import java.net.URI;
 import java.util.Date;
+import java.util.UUID;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
+import org.springframework.http.codec.multipart.FilePart;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.server.RequestPredicates;
@@ -14,6 +18,9 @@ import reactor.core.publisher.Mono;
 
 @Component
 public class ProductHandler {
+
+	@Value("${config.uploads.path}")
+	private String pathUploads;
 
 	private final ProductService productService;
 
@@ -73,5 +80,26 @@ public class ProductHandler {
 			return productService.delete(product)
 				.then(ServerResponse.noContent().build());
 		}).switchIfEmpty(ServerResponse.notFound().build());
+	}
+
+	public Mono<ServerResponse> uploadPicture(ServerRequest serverRequest) {
+		String productId = serverRequest.pathVariable("id");
+		return serverRequest.multipartData()
+			.map(stringPartMultiValueMap -> stringPartMultiValueMap.toSingleValueMap().get("file"))
+			.cast(FilePart.class)
+			.flatMap(filePart -> productService.findById(productId)
+				.flatMap(product -> {
+					product.setPicture(UUID.randomUUID().toString().concat("-")
+						.concat(filePart.filename()
+							.replace(" ", "")
+							.replace(":", "")
+							.replace("\\", "")
+						));
+					return filePart.transferTo(new File(pathUploads.concat(product.getPicture())))
+						.then(productService.save(product));
+				})).flatMap(product -> ServerResponse.created(URI.create("/api/v2/products/".concat(product.getId())))
+				.contentType(MediaType.APPLICATION_JSON)
+				.body(BodyInserters.fromObject(product)))
+			.switchIfEmpty(ServerResponse.notFound().build());
 	}
 }
