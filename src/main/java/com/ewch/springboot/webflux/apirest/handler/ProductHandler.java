@@ -65,4 +65,13 @@ public class ProductHandler {
 			.body(productService.save(product), Product.class))
 			.switchIfEmpty(ServerResponse.notFound().build());
 	}
+
+	public Mono<ServerResponse> deleteProduct(ServerRequest serverRequest) {
+		String productId = serverRequest.pathVariable("id");
+		Mono<Product> productMonoDB = productService.findById(productId);
+		return productMonoDB.flatMap(product -> {
+			return productService.delete(product)
+				.then(ServerResponse.noContent().build());
+		}).switchIfEmpty(ServerResponse.notFound().build());
+	}
 }
