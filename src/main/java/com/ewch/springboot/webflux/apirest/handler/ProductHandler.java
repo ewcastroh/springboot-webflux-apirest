@@ -12,10 +12,13 @@ import org.springframework.http.MediaType;
 import org.springframework.http.codec.multipart.FilePart;
 import org.springframework.http.codec.multipart.FormFieldPart;
 import org.springframework.stereotype.Component;
+import org.springframework.validation.BeanPropertyBindingResult;
+import org.springframework.validation.Errors;
+import org.springframework.validation.Validator;
 import org.springframework.web.reactive.function.BodyInserters;
-import org.springframework.web.reactive.function.server.RequestPredicates;
 import org.springframework.web.reactive.function.server.ServerRequest;
 import org.springframework.web.reactive.function.server.ServerResponse;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 @Component
@@ -25,9 +28,11 @@ public class ProductHandler {
 	private String pathUploads;
 
 	private final ProductService productService;
+	private final Validator validator;
 
-	public ProductHandler(ProductService productService) {
+	public ProductHandler(ProductService productService, Validator validator) {
 		this.productService = productService;
+		this.validator = validator;
 	}
 
 	public Mono<ServerResponse> getAllProducts(ServerRequest serverRequest) {
@@ -49,14 +54,25 @@ public class ProductHandler {
 	public Mono<ServerResponse> createProduct(ServerRequest serverRequest) {
 		Mono<Product> productMono = serverRequest.bodyToMono(Product.class);
 		return productMono.flatMap(product -> {
-			if (product.getCreatedAt() == null) {
-				product.setCreatedAt(new Date());
+			Errors errors = new BeanPropertyBindingResult(product, Product.class.getName());
+			validator.validate(product, errors);
+
+			if (errors.hasErrors()) {
+				return Flux.fromIterable(errors.getFieldErrors())
+					.map(fieldError -> "Field ".concat(fieldError.getField()).concat(" ").concat(fieldError.getDefaultMessage()))
+					.collectList()
+					.flatMap(strings -> ServerResponse.badRequest()
+						.body(BodyInserters.fromObject(strings)));
+			} else {
+				if (product.getCreatedAt() == null) {
+					product.setCreatedAt(new Date());
+				}
+				return productService.save(product)
+					.flatMap(savedProduct -> ServerResponse.created(URI.create("/api/v2/products/".concat(savedProduct.getId())))
+						.contentType(MediaType.APPLICATION_JSON_UTF8)
+						.body(BodyInserters.fromObject(savedProduct)));
 			}
-			return productService.save(product);
-		})
-			.flatMap(product -> ServerResponse.created(URI.create("/api/v2/products/".concat(product.getId())))
-			.contentType(MediaType.APPLICATION_JSON_UTF8)
-			.body(BodyInserters.fromObject(product)));
+		});
 	}
 
 	public Mono<ServerResponse> updateProduct(ServerRequest serverRequest) {
