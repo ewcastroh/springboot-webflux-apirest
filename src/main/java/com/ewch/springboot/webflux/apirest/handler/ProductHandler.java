@@ -4,6 +4,7 @@ import com.ewch.springboot.webflux.apirest.model.document.Product;
 import com.ewch.springboot.webflux.apirest.service.ProductService;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
+import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.server.ServerRequest;
 import org.springframework.web.reactive.function.server.ServerResponse;
 import reactor.core.publisher.Mono;
@@ -21,5 +22,15 @@ public class ProductHandler {
 		return ServerResponse.ok()
 			.contentType(MediaType.APPLICATION_JSON_UTF8)
 			.body(productService.findAll(), Product.class);
+	}
+
+	public Mono<ServerResponse> getProductById(ServerRequest serverRequest) {
+		String productId = serverRequest.pathVariable("id");
+		return productService.findById(productId)
+			.flatMap(product -> ServerResponse.ok()
+				.contentType(MediaType.APPLICATION_JSON_UTF8)
+				.body(BodyInserters.fromObject(product))
+				.switchIfEmpty(ServerResponse.notFound().build())
+			);
 	}
 }
