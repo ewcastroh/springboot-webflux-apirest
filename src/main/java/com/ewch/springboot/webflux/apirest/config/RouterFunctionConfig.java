@@ -15,6 +15,7 @@ public class RouterFunctionConfig {
 	public RouterFunction<ServerResponse> routes(ProductHandler productHandler) {
 		return RouterFunctions.route(
 			RequestPredicates.GET("/api/v2/products").or(RequestPredicates.GET("/api/v3/products")), productHandler::getAllProducts)
-			.andRoute(RequestPredicates.GET("/api/v2/products/{id}"), productHandler::getProductById);
+			.andRoute(RequestPredicates.GET("/api/v2/products/{id}"), productHandler::getProductById)
+			.andRoute(RequestPredicates.POST("/api/v2/products"), productHandler::createProduct);
 	}
 }

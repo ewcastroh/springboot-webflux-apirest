@@ -2,6 +2,8 @@ package com.ewch.springboot.webflux.apirest.handler;
 
 import com.ewch.springboot.webflux.apirest.model.document.Product;
 import com.ewch.springboot.webflux.apirest.service.ProductService;
+import java.net.URI;
+import java.util.Date;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.BodyInserters;
@@ -32,5 +34,18 @@ public class ProductHandler {
 				.body(BodyInserters.fromObject(product))
 				.switchIfEmpty(ServerResponse.notFound().build())
 			);
+	}
+
+	public Mono<ServerResponse> createProduct(ServerRequest serverRequest) {
+		Mono<Product> productMono = serverRequest.bodyToMono(Product.class);
+		return productMono.flatMap(product -> {
+			if (product.getCreatedAt() == null) {
+				product.setCreatedAt(new Date());
+			}
+			return productService.save(product);
+		})
+			.flatMap(product -> ServerResponse.created(URI.create("/api/v2/products/".concat(product.getId())))
+			.contentType(MediaType.APPLICATION_JSON_UTF8)
+			.body(BodyInserters.fromObject(product)));
 	}
 }
