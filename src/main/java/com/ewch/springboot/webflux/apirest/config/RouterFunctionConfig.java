@@ -16,6 +16,7 @@ public class RouterFunctionConfig {
 		return RouterFunctions.route(
 			RequestPredicates.GET("/api/v2/products").or(RequestPredicates.GET("/api/v3/products")), productHandler::getAllProducts)
 			.andRoute(RequestPredicates.GET("/api/v2/products/{id}"), productHandler::getProductById)
-			.andRoute(RequestPredicates.POST("/api/v2/products"), productHandler::createProduct);
+			.andRoute(RequestPredicates.POST("/api/v2/products"), productHandler::createProduct)
+			.andRoute(RequestPredicates.PUT("/api/v2/products/{id}"), productHandler::updateProduct);
 	}
 }

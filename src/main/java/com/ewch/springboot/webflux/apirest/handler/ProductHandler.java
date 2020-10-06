@@ -7,6 +7,7 @@ import java.util.Date;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.BodyInserters;
+import org.springframework.web.reactive.function.server.RequestPredicates;
 import org.springframework.web.reactive.function.server.ServerRequest;
 import org.springframework.web.reactive.function.server.ServerResponse;
 import reactor.core.publisher.Mono;
@@ -47,5 +48,21 @@ public class ProductHandler {
 			.flatMap(product -> ServerResponse.created(URI.create("/api/v2/products/".concat(product.getId())))
 			.contentType(MediaType.APPLICATION_JSON_UTF8)
 			.body(BodyInserters.fromObject(product)));
+	}
+
+	public Mono<ServerResponse> updateProduct(ServerRequest serverRequest) {
+		Mono<Product> productMono = serverRequest.bodyToMono(Product.class);
+		String productId = serverRequest.pathVariable("id");
+		Mono<Product> productMonoDB = productService.findById(productId);
+		return productMonoDB.zipWith(productMono, (productDB, productReq) -> {
+			productDB.setName(productReq.getName());
+			productDB.setPrice(productReq.getPrice());
+			productDB.setCategory(productReq.getCategory());
+			return productDB;
+		})
+			.flatMap(product -> ServerResponse.created(URI.create("/api/v2/products/".concat(product.getId())))
+			.contentType(MediaType.APPLICATION_JSON)
+			.body(productService.save(product), Product.class))
+			.switchIfEmpty(ServerResponse.notFound().build());
 	}
 }
