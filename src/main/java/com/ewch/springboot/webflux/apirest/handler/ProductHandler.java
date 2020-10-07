@@ -86,7 +86,7 @@ public class ProductHandler {
 			return productDB;
 		})
 			.flatMap(product -> ServerResponse.created(URI.create("/api/v2/products/".concat(product.getId())))
-			.contentType(MediaType.APPLICATION_JSON)
+			.contentType(MediaType.APPLICATION_JSON_UTF8)
 			.body(productService.save(product), Product.class))
 			.switchIfEmpty(ServerResponse.notFound().build());
 	}

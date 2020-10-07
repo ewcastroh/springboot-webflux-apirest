@@ -15,6 +15,10 @@ public interface ProductService {
 
 	Mono<Product> findById(String id);
 
+	Mono<Product> findByName(String name);
+
+	Mono<Product> findByNameQuery(String name);
+
 	Mono<Product> save(Product product);
 
 	Mono<Void> delete(Product product);
@@ -22,6 +26,8 @@ public interface ProductService {
 	Flux<Category> findAllCategories();
 
 	Mono<Category> findCategoryById(String id);
+
+	Mono<Category> findCategoryByName(String name);
 
 	Mono<Category> saveCategory(Category category);
 }

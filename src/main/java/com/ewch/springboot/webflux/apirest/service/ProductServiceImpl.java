@@ -48,6 +48,16 @@ public class ProductServiceImpl implements ProductService {
 	}
 
 	@Override
+	public Mono<Product> findByName(String name) {
+		return productDao.findProductByName(name);
+	}
+
+	@Override
+	public Mono<Product> findByNameQuery(String name) {
+		return productDao.findProductByNameQuery(name);
+	}
+
+	@Override
 	public Mono<Product> save(Product product) {
 		return productDao.save(product);
 	}
@@ -65,6 +75,11 @@ public class ProductServiceImpl implements ProductService {
 	@Override
 	public Mono<Category> findCategoryById(String id) {
 		return categoryDao.findById(id);
+	}
+
+	@Override
+	public Mono<Category> findCategoryByName(String name) {
+		return categoryDao.findCategoryByName(name);
 	}
 
 	@Override
